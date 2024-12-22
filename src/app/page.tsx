@@ -29,9 +29,14 @@ export default function Home() {
       setFileName(file.name)
       const reader = new FileReader()
       
-      reader.onload = (e) => {
+      reader.onload = (e: ProgressEvent<FileReader>) => {
         try {
-          Papa.parse(e.target?.result as string, {
+          const result = e.target?.result
+          if (typeof result !== 'string') {
+            setError('Error reading file')
+            return
+          }
+          Papa.parse(result, {
             header: true,
             skipEmptyLines: true,
             complete: (results) => {
