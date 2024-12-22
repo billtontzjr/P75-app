@@ -5,10 +5,15 @@ import { motion } from 'framer-motion'
 import { Search, Upload, AlertCircle } from 'lucide-react'
 import Papa from 'papaparse'
 
+interface CSVRow {
+  Code: string;
+  [key: string]: string;  // For P75 and any other columns
+}
+
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [data, setData] = useState([])
-  const [filteredResults, setFilteredResults] = useState([])
+  const [data, setData] = useState<CSVRow[]>([])
+  const [filteredResults, setFilteredResults] = useState<CSVRow[]>([])
   const [fileName, setFileName] = useState('')
   const [error, setError] = useState('')
   const [isFileLoaded, setIsFileLoaded] = useState(false)
@@ -37,7 +42,7 @@ export default function Home() {
                   setError('CSV must contain "Code" and "P75" columns')
                   return
                 }
-                setData(results.data)
+                setData(results.data as CSVRow[])
                 setIsFileLoaded(true)
                 setError('')
               } else {
@@ -64,7 +69,7 @@ export default function Home() {
   const handleSearch = (searchValue: string) => {
     setSearchTerm(searchValue)
     if (searchValue) {
-      const results = data.filter((item: any) => 
+      const results = data.filter((item: CSVRow) => 
         item.Code?.toLowerCase().includes(searchValue.toLowerCase())
       )
       setFilteredResults(results.slice(0, 10))
@@ -73,7 +78,7 @@ export default function Home() {
     }
   }
 
-  const formatP75 = (item: Record<string, string>) => {
+  const formatP75 = (item: CSVRow) => {
     const p75Key = Object.keys(item).find(key => key.includes('P75'))
     return p75Key ? item[p75Key].trim() : 'N/A'
   }
@@ -164,7 +169,7 @@ export default function Home() {
                   >
                     <div className="text-sm font-medium text-gray-400">Code</div>
                     <div className="text-sm font-medium text-gray-400">P75 Value</div>
-                    {filteredResults.map((item: any, index) => (
+                    {filteredResults.map((item: CSVRow, index) => (
                       <motion.div 
                         key={index}
                         initial={{ opacity: 0, y: 10 }}
