@@ -37,7 +37,7 @@ export default function Home() {
             complete: (results) => {
               if (results.data && results.data.length > 0) {
                 // Validate CSV structure
-                const firstRow = results.data[0] as Record<string, string>
+                const firstRow = results.data[0] as CSVRow
                 if (!('Code' in firstRow) || !Object.keys(firstRow).some(key => key.includes('P75'))) {
                   setError('CSV must contain "Code" and "P75" columns')
                   return
@@ -49,7 +49,7 @@ export default function Home() {
                 setError('No data found in CSV file')
               }
             },
-            error: (error) => {
+            error: (error: Papa.ParseError) => {
               setError('Error parsing CSV file: ' + error.message)
             }
           })
