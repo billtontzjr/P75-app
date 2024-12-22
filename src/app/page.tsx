@@ -26,12 +26,17 @@ export default function Home() {
         Papa.parse<CSVRow>(text, {
           header: true,
           skipEmptyLines: true,
+          transformHeader: (header) => header.trim(),
           complete: (results) => {
+            console.log('Raw CSV text:', text);
             console.log('Parsed CSV data:', results.data);
             console.log('Column names:', results.meta.fields);
             setResults(results.data);
             setFilteredResults(results.data);
           },
+          error: (error) => {
+            console.error('Papa Parse error:', error);
+          }
         });
       } catch (error) {
         console.error('Error parsing CSV:', error);
@@ -44,9 +49,16 @@ export default function Home() {
     const term = e.target.value.toLowerCase();
     setSearchTerm(term);
     
-    const filtered = results.filter((row) =>
-      row.Code.toLowerCase().includes(term)
-    );
+    console.log('Searching for:', term);
+    console.log('Available results:', results);
+    
+    const filtered = results.filter((row) => {
+      const match = row.Code.toLowerCase().includes(term);
+      console.log(`Checking ${row.Code} (${row.P75}): ${match}`);
+      return match;
+    });
+    
+    console.log('Filtered results:', filtered);
     setFilteredResults(filtered);
   };
 
