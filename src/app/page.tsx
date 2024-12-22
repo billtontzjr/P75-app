@@ -27,6 +27,8 @@ export default function Home() {
           header: true,
           skipEmptyLines: true,
           complete: (results) => {
+            console.log('Parsed CSV data:', results.data);
+            console.log('Column names:', results.meta.fields);
             setResults(results.data);
             setFilteredResults(results.data);
           },
