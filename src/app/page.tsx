@@ -4,8 +4,8 @@ import { useState } from 'react';
 import Papa from 'papaparse';
 
 interface CSVRow {
-  text: string;
-  [key: string]: string;
+  Code: string;
+  P75: string;
 }
 
 export default function Home() {
@@ -41,11 +41,11 @@ export default function Home() {
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const term = e.target.value;
+    const term = e.target.value.toLowerCase();
     setSearchTerm(term);
     
     const filtered = results.filter((row) =>
-      row.text.toLowerCase().includes(term.toLowerCase())
+      row.Code.toLowerCase().includes(term)
     );
     setFilteredResults(filtered);
   };
@@ -73,7 +73,7 @@ export default function Home() {
           <div>
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="Enter Code..."
               value={searchTerm}
               onChange={handleSearch}
               className="w-full p-2 border rounded-md"
@@ -85,7 +85,10 @@ export default function Home() {
               <thead>
                 <tr>
                   <th className="px-6 py-3 border-b border-gray-200 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                    Text
+                    Code
+                  </th>
+                  <th className="px-6 py-3 border-b border-gray-200 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                    P75 Value
                   </th>
                 </tr>
               </thead>
@@ -93,7 +96,10 @@ export default function Home() {
                 {filteredResults.map((row, index) => (
                   <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                     <td className="px-6 py-4 whitespace-pre-wrap border-b border-gray-200 text-sm leading-5 text-gray-500">
-                      {row.text}
+                      {row.Code}
+                    </td>
+                    <td className="px-6 py-4 whitespace-pre-wrap border-b border-gray-200 text-sm leading-5 text-gray-500">
+                      {row.P75}
                     </td>
                   </tr>
                 ))}
