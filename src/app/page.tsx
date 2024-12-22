@@ -29,14 +29,13 @@ export default function Home() {
       setFileName(file.name)
       const reader = new FileReader()
       
-      reader.onload = (e: ProgressEvent<FileReader>) => {
+      reader.onload = (e) => {
         try {
-          const result = e.target?.result
-          if (typeof result !== 'string') {
+          if (!e.target?.result || typeof e.target.result !== 'string') {
             setError('Error reading file')
             return
           }
-          Papa.parse(result, {
+          Papa.parse<CSVRow>(e.target.result, {
             header: true,
             skipEmptyLines: true,
             complete: (results) => {
