@@ -1,9 +1,7 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Search, Upload, AlertCircle } from 'lucide-react'
-import Papa from 'papaparse'
+import { useState } from 'react';
+import Papa from 'papaparse';
 
 interface CSVRow {
   Code: string;
@@ -22,91 +20,40 @@ export default function Home() {
   const [selectedP75, setSelectedP75] = useState<string>('');
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      if (!file.name.toLowerCase().endsWith('.csv')) {
-        setError('Please upload a CSV file')
-        return
-      }
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-      setFileName(file.name)
-      const reader = new FileReader()
-      
-      reader.onload = (e) => {
-        try {
-          if (!e.target?.result || typeof e.target.result !== 'string') {
-            setError('Error reading file')
-            return
+    const reader = new FileReader();
+    reader.onload = (e: ProgressEvent<FileReader>) => {
+      try {
+        const text = e.target?.result;
+        if (typeof text !== 'string') return;
+
+        Papa.parse<CSVRow>(text, {
+          header: true,
+          skipEmptyLines: true,
+          transformHeader: (header) => header.trim(),
+          complete: (results) => {
+            console.log('Raw CSV text:', text);
+            console.log('Parsed CSV data:', results.data);
+            console.log('Column names:', results.meta.fields);
+            setData(results.data);
+            setFilteredResults(results.data);
+          },
+          error: (error) => {
+            console.error('Papa Parse error:', error);
           }
-          Papa.parse<CSVRow>(e.target.result, {
-            header: true,
-            skipEmptyLines: true,
-            transformHeader: (header: string) => {
-              // Remove any BOM characters, trim whitespace, and normalize column names
-              const cleaned = header.replace(/^\ufeff/, '').trim();
-              console.log('Raw header:', header, '-> cleaned:', cleaned);
-              return cleaned;
-            },
-            complete: (results) => {
-              if (!results.data || results.data.length === 0) {
-                setError('No data found in CSV file');
-                return;
-              }
-
-              try {
-                // Get column names from the first row
-                const firstRow = results.data[0] as CSVRow;
-                const columns = Object.keys(firstRow);
-                console.log('Available columns:', columns);
-
-                // Find exact matches for our columns (with trimmed spaces)
-                const codeColumn = columns.find(col => col.trim() === 'Code');
-                const p75Column = columns.find(col => col.trim() === 'P75');
-
-                if (!codeColumn || !p75Column) {
-                  setError(`CSV must have "Code" and "P75" columns. Found: ${columns.join(', ')}`);
-                  return;
-                }
-
-                console.log('Found columns:', { codeColumn, p75Column });
-
-                // Transform the data
-                const transformedData = results.data
-                  .filter((row: any) => row && typeof row === 'object')
-                  .map((row: any) => {
-                    const code = row[codeColumn]?.toString().trim();
-                    let p75 = row[p75Column]?.toString().trim();
-                    console.log('Processing row:', { code, p75 });
-                    return { Code: code, P75: p75 };
-                  })
-                  .filter(row => row.Code && row.P75); // Remove empty rows
-
-                console.log('Sample of processed data:', transformedData.slice(0, 3));
-                setData(transformedData);
-                setIsFileLoaded(true);
-                setError('');
-              } catch (error) {
-                console.error('Error processing CSV:', error);
-                setError('Error processing CSV: ' + (error as Error).message);
-              }
-            },
-            error: (error: Papa.ParseError) => {
-              console.error('CSV parsing error:', error);
-              setError('Error parsing CSV: ' + error.message);
-            }
-          });
-        } catch (error: any) {
-          setError('Error reading file: ' + error.message)
-        }
+        });
+      } catch (error: any) {
+        setError('Error reading file: ' + error.message)
       }
-
-      reader.onerror = () => {
-        setError('Error reading file')
-      }
-
-      reader.readAsText(file)
+    };
+    reader.onerror = () => {
+      setError('Error reading file')
     }
-  }
+
+    reader.readAsText(file)
+  };
 
   const handleSearch = (searchValue: string) => {
     setSearchTerm(searchValue);
@@ -142,61 +89,33 @@ export default function Home() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-2xl mx-auto"
-      >
-        <div className="glass-morphism p-8 rounded-xl shadow-2xl">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">P75 Code Search</h1>
-            <p className="text-gray-400">Upload your CSV file and search for P75 codes</p>
+    <main className="min-h-screen p-8">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-8">P75 Code Search</h1>
+        
+        <div className="space-y-6">
+          <div>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+              className="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100"
+            />
           </div>
 
-          {/* File Upload Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-center w-full">
-              <label className="gradient-border flex flex-col items-center justify-center w-full h-32 cursor-pointer hover:bg-opacity-50 transition-all duration-300">
-                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <Upload className="w-8 h-8 mb-2 text-blue-500" />
-                  <p className="mb-2 text-sm text-gray-300">
-                    <span className="font-semibold">Click to upload</span> or drag and drop
-                  </p>
-                  <p className="text-xs text-gray-400">CSV file with Code and P75 columns</p>
-                </div>
-                <input 
-                  type="file" 
-                  className="hidden" 
-                  accept=".csv" 
-                  onChange={handleFileUpload}
-                />
-              </label>
-            </div>
-            
-            {fileName && (
-              <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-sm text-gray-400 text-center"
-              >
-                Selected file: {fileName}
-              </motion.p>
-            )}
-            
-            {error && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="bg-red-900/50 border border-red-800 text-red-300 px-4 py-3 rounded relative"
-              >
-                <div className="flex items-center">
-                  <AlertCircle className="h-4 w-4 mr-2" />
-                  <span>{error}</span>
-                </div>
-              </motion.div>
-            )}
+          <div>
+            <input
+              type="text"
+              placeholder="Enter Code..."
+              value={searchTerm}
+              onChange={handleSearch}
+              className="w-full p-2 border rounded-md"
+            />
           </div>
 
           {/* Search Section */}
