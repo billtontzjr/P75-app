@@ -4,8 +4,11 @@ import { useState } from 'react';
 import Papa from 'papaparse';
 
 interface CSVRow {
-  Code: string;
-  ' P75': string;
+  Code?: string;
+  ' P75'?: string;
+  P75?: string;
+  ' p75'?: string;
+  p75?: string;
 }
 
 interface SelectedItem {
@@ -76,15 +79,15 @@ export default function Home() {
       
       if (code) {
         const match = data.find(row => 
-          row.Code.trim().toUpperCase() === code
+          row.Code?.trim().toUpperCase() === code
         );
         
         if (match) {
           // Check if code already exists
           if (!selectedItems.some(item => item.code.toUpperCase() === code)) {
             setSelectedItems(prev => [...prev, { 
-              code: match.Code.trim(), 
-              p75: match[' P75'].trim() 
+              code: match.Code?.trim() || '', 
+              p75: match[' P75']?.trim() || '' 
             }]);
           }
         } else {
