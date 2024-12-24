@@ -5,7 +5,7 @@ import Papa from 'papaparse';
 
 interface CSVRow {
   Code: string;
-  ' P75': string;  // Note the space before P75 to match the CSV column name
+  ' P75': string;
 }
 
 interface SelectedItem {
@@ -36,11 +36,10 @@ export default function Home() {
           console.log('Raw data sample:', results.data[0]);
           console.log('Column names:', results.meta.fields);
           
-          // Transform the data, handling the space in ' P75' column name
           const transformedData = results.data
             .map((row: CSVRow) => {
               const code = row['Code']?.toString();
-              const p75 = row[' P75']?.toString(); // Note the space before P75
+              const p75 = row[' P75']?.toString();
               
               if (!code || !p75) {
                 console.log('Skipping invalid row:', row);
@@ -54,7 +53,6 @@ export default function Home() {
             })
             .filter((row): row is CSVRow => row !== null);
 
-          console.log('Transformed data sample:', transformedData[0]);
           setData(transformedData);
           setIsFileLoaded(true);
           setError('');
@@ -71,17 +69,25 @@ export default function Home() {
   const handleCodeInput = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' || event.key === ' ' || event.key === ',') {
       event.preventDefault();
-      const code = searchTerm.trim();
+      const code = searchTerm.trim().toUpperCase(); // Convert to uppercase for case-insensitive matching
       
       if (code) {
-        const match = data.find(row => row.Code === code);
+        const match = data.find(row => 
+          row.Code.trim().toUpperCase() === code
+        );
+        
         if (match) {
           // Check if code already exists
-          if (!selectedItems.some(item => item.code === code)) {
-            setSelectedItems(prev => [...prev, { code: match.Code, p75: match[' P75'] }]);
+          if (!selectedItems.some(item => item.code.toUpperCase() === code)) {
+            setSelectedItems(prev => [...prev, { 
+              code: match.Code.trim(), 
+              p75: match[' P75'].trim() 
+            }]);
           }
         } else {
           console.log('No match found for code:', code);
+          setError(`No match found for code: ${code}`);
+          setTimeout(() => setError(''), 3000); // Clear error after 3 seconds
         }
         setSearchTerm('');
       }
