@@ -6,18 +6,15 @@ import Papa from 'papaparse';
 interface CSVRow {
   Code: string;
   P75: string;
-  [key: string]: string;  // For other columns
 }
 
 export default function Home() {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [data, setData] = useState<CSVRow[]>([])
-  const [filteredResults, setFilteredResults] = useState<CSVRow[]>([])
-  const [fileName, setFileName] = useState('')
-  const [error, setError] = useState<string>('')
-  const [isFileLoaded, setIsFileLoaded] = useState(false)
-  const [selectedCode, setSelectedCode] = useState<string>('');
-  const [selectedP75, setSelectedP75] = useState<string>('');
+  const [data, setData] = useState<CSVRow[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredResults, setFilteredResults] = useState<CSVRow[]>([]);
+  const [selectedCode, setSelectedCode] = useState('');
+  const [selectedP75, setSelectedP75] = useState('');
+  const [error, setError] = useState('');
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -28,189 +25,90 @@ export default function Home() {
       const text = e.target?.result;
       if (typeof text !== 'string') return;
 
-      try {
-        Papa.parse(text, {
-          header: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            console.log('Raw CSV text:', text.substring(0, 200)); // Show first 200 chars
-            console.log('Column names:', results.meta.fields);
-            
-            if (!results.data || results.data.length === 0) {
-              setError('No data found in CSV');
-              return;
-            }
+      Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          console.log('Column names:', results.meta.fields);
+          console.log('First row:', results.data[0]);
 
-            // Log the first few rows to see their structure
-            console.log('First few rows:', results.data.slice(0, 3));
+          const transformedData = results.data.map((row: any) => ({
+            Code: row['Code']?.toString() || '',
+            P75: row[' P75']?.toString() || ''  // Note the space before P75
+          })).filter(row => row.Code && row.P75);
 
-            const transformedData = results.data
-              .map((row: any) => {
-                // Explicitly look for the exact column names we see in the console
-                const code = row['Code'];
-                const p75 = row[' P75']; // Note the space before P75
-                
-                if (!code || !p75) {
-                  console.log('Skipping row due to missing data:', row);
-                  return null;
-                }
-                
-                return {
-                  Code: code.toString().trim(),
-                  P75: p75.toString().trim()
-                };
-              })
-              .filter((row): row is CSVRow => row !== null);
-
-            console.log('Transformed data (first 5 rows):', transformedData.slice(0, 5));
-            
-            if (transformedData.length === 0) {
-              setError('No valid data found after processing');
-              return;
-            }
-
-            setData(transformedData);
-            setIsFileLoaded(true);
-            setError('');
-          },
-          error: (error) => {
-            console.error('CSV parsing error:', error);
-            setError('Error parsing CSV: ' + error.message);
-          }
-        });
-      } catch (error: any) {
-        console.error('File processing error:', error);
-        setError('Error processing file: ' + error.message);
-      }
+          console.log('Transformed data:', transformedData.slice(0, 5));
+          setData(transformedData);
+          setError('');
+        },
+        error: (error) => {
+          console.error('Error:', error);
+          setError(error.message);
+        }
+      });
     };
-
-    reader.onerror = () => {
-      setError('Error reading file');
-    };
-
     reader.readAsText(file);
   };
 
-  const handleSearch = (searchValue: string) => {
-    console.log('Searching for:', searchValue);
-    console.log('Current data sample:', data.slice(0, 5));
-    
-    setSearchTerm(searchValue);
-    setSelectedCode('');
-    setSelectedP75('');
-    
-    if (!searchValue.trim()) {
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+    if (!value.trim()) {
       setFilteredResults([]);
       return;
     }
 
-    const filtered = data
-      .filter(row => {
-        const match = row.Code.toLowerCase().includes(searchValue.toLowerCase());
-        console.log(`Checking ${row.Code} -> P75: ${row.P75} (match: ${match})`);
-        return match;
-      })
-      .slice(0, 10);
-
-    console.log('Filtered results:', filtered);
+    const filtered = data.filter(row => 
+      row.Code.toLowerCase().includes(value.toLowerCase())
+    );
+    console.log('Search results:', filtered);
     setFilteredResults(filtered);
   };
 
-  const handleCodeSelect = (code: string, p75: string) => {
-    console.log('Selected code:', code, 'with P75:', p75);
+  const handleSelect = (code: string, p75: string) => {
+    console.log('Selected:', { code, p75 });
     setSelectedCode(code);
     setSelectedP75(p75);
-    setSearchTerm(code);
-    setFilteredResults([]);
   };
 
   return (
-    <main className="min-h-screen p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">P75 Code Search</h1>
-        
-        <div className="space-y-6">
-          <div>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleFileUpload}
-              className="block w-full text-sm text-gray-500
-                file:mr-4 file:py-2 file:px-4
-                file:rounded-full file:border-0
-                file:text-sm file:font-semibold
-                file:bg-blue-50 file:text-blue-700
-                hover:file:bg-blue-100"
-            />
-          </div>
+    <main className="p-8">
+      <h1 className="text-2xl font-bold mb-4">P75 Code Search</h1>
+      
+      <div className="space-y-4">
+        <input
+          type="file"
+          accept=".csv"
+          onChange={handleFileUpload}
+          className="block mb-4"
+        />
 
-          <div>
-            <input
-              type="text"
-              placeholder="Enter Code..."
-              value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="w-full p-2 border rounded-md"
-            />
-          </div>
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => handleSearch(e.target.value)}
+          placeholder="Search for a code..."
+          className="w-full p-2 border rounded"
+        />
 
-          {/* Search Section */}
-          {isFileLoaded && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="space-y-4 mt-8"
+        {error && <p className="text-red-500">{error}</p>}
+
+        {selectedCode && (
+          <div className="p-4 bg-blue-100 rounded">
+            <p>Code: {selectedCode}</p>
+            <p className="text-lg font-bold">P75: {selectedP75}</p>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {filteredResults.map((result, index) => (
+            <button
+              key={index}
+              onClick={() => handleSelect(result.Code, result.P75)}
+              className="w-full p-2 text-left border rounded hover:bg-gray-100"
             >
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Enter code to search..."
-                  value={searchTerm}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-100 placeholder-gray-400"
-                />
-              </div>
-
-              {/* Results Section */}
-              <div className="space-y-4">
-                {selectedCode && selectedP75 && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-gray-800/30 p-6 rounded-lg"
-                  >
-                    <div className="text-center">
-                      <h3 className="text-xl font-semibold text-gray-200 mb-2">P75 Value for Code {selectedCode}</h3>
-                      <p className="text-3xl font-bold text-blue-400">
-                        {selectedP75}
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-                {!selectedCode && filteredResults.length > 0 && (
-                  <div className="space-y-2">
-                    {filteredResults.map((item, index) => (
-                      <motion.button
-                        key={index}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        onClick={() => handleCodeSelect(item.Code, item.P75)}
-                        className="w-full text-left p-3 bg-gray-800/30 hover:bg-gray-700/30 rounded-lg text-gray-200 transition-colors duration-200"
-                      >
-                        <span className="font-medium">{item.Code}</span>
-                        <span className="text-gray-400 ml-4">P75: {item.P75}</span>
-                      </motion.button>
-                    ))}
-                  </div>
-                )}
-                {searchTerm && filteredResults.length === 0 && !selectedCode && (
-                  <div className="text-center text-gray-400">No matching codes found</div>
-                )}
-              </div>
-            </motion.div>
-          )}
+              {result.Code} - P75: {result.P75}
+            </button>
+          ))}
         </div>
       </div>
     </main>
