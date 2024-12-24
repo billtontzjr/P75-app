@@ -24,12 +24,12 @@ export default function Home() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e: ProgressEvent<FileReader>) => {
-      try {
-        const text = e.target?.result;
-        if (typeof text !== 'string') return;
+    reader.onload = (e) => {
+      const text = e.target?.result;
+      if (typeof text !== 'string') return;
 
-        Papa.parse<CSVRow>(text, {
+      try {
+        Papa.parse(text, {
           header: true,
           skipEmptyLines: true,
           transformHeader: (header) => header.trim(),
@@ -37,22 +37,36 @@ export default function Home() {
             console.log('Raw CSV text:', text);
             console.log('Parsed CSV data:', results.data);
             console.log('Column names:', results.meta.fields);
-            setData(results.data);
-            setFilteredResults(results.data);
+
+            // Transform the data to ensure proper structure
+            const transformedData = results.data
+              .filter((row: any) => row && typeof row === 'object')
+              .map((row: any) => ({
+                Code: row['Code']?.toString().trim(),
+                P75: row[' P75']?.toString().trim() // Note the space before P75
+              }))
+              .filter(row => row.Code && row.P75);
+
+            console.log('Transformed data:', transformedData.slice(0, 5));
+            setData(transformedData);
+            setIsFileLoaded(true);
+            setError('');
           },
           error: (error) => {
-            console.error('Papa Parse error:', error);
+            console.error('CSV parsing error:', error);
+            setError('Error parsing CSV: ' + error.message);
           }
         });
       } catch (error: any) {
-        setError('Error reading file: ' + error.message)
+        setError('Error reading file: ' + error.message);
       }
     };
-    reader.onerror = () => {
-      setError('Error reading file')
-    }
 
-    reader.readAsText(file)
+    reader.onerror = () => {
+      setError('Error reading file');
+    };
+
+    reader.readAsText(file);
   };
 
   const handleSearch = (searchValue: string) => {
@@ -65,23 +79,16 @@ export default function Home() {
       return;
     }
 
-    try {
-      const results = data
-        .filter(item => {
-          const code = item.Code?.toString().toLowerCase();
-          const search = searchValue.toLowerCase();
-          return code && code.includes(search);
-        })
-        .slice(0, 10);
+    const filtered = data
+      .filter(row => row.Code.toLowerCase().includes(searchValue.toLowerCase()))
+      .slice(0, 10);  // Limit to 10 results for better performance
 
-      setFilteredResults(results);
-    } catch (error) {
-      console.error('Search error:', error);
-      setFilteredResults([]);
-    }
+    console.log('Filtered results:', filtered);
+    setFilteredResults(filtered);
   };
 
   const handleCodeSelect = (code: string, p75: string) => {
+    console.log('Selected:', { code, p75 });
     setSelectedCode(code);
     setSelectedP75(p75);
     setSearchTerm(code);
@@ -138,7 +145,7 @@ export default function Home() {
 
               {/* Results Section */}
               <div className="space-y-4">
-                {selectedCode ? (
+                {selectedCode && (
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -146,12 +153,13 @@ export default function Home() {
                   >
                     <div className="text-center">
                       <h3 className="text-xl font-semibold text-gray-200 mb-2">P75 Value for Code {selectedCode}</h3>
-                      <p className="text-2xl font-bold text-blue-400">
-                        {selectedP75 || 'N/A'}
+                      <p className="text-3xl font-bold text-blue-400">
+                        {selectedP75}
                       </p>
                     </div>
                   </motion.div>
-                ) : filteredResults.length > 0 ? (
+                )}
+                {!selectedCode && filteredResults.length > 0 && (
                   <div className="space-y-2">
                     {filteredResults.map((item, index) => (
                       <motion.button
@@ -159,10 +167,7 @@ export default function Home() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        onClick={() => {
-                          console.log('Selected item:', item);
-                          handleCodeSelect(item.Code, item.P75);
-                        }}
+                        onClick={() => handleCodeSelect(item.Code, item.P75)}
                         className="w-full text-left p-3 bg-gray-800/30 hover:bg-gray-700/30 rounded-lg text-gray-200 transition-colors duration-200"
                       >
                         <span className="font-medium">{item.Code}</span>
@@ -170,16 +175,15 @@ export default function Home() {
                       </motion.button>
                     ))}
                   </div>
-                ) : searchTerm ? (
+                )}
+                {searchTerm && filteredResults.length === 0 && !selectedCode && (
                   <div className="text-center text-gray-400">No matching codes found</div>
-                ) : (
-                  <div className="text-center text-gray-400">Enter a code to search</div>
                 )}
               </div>
             </motion.div>
           )}
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </main>
   );
 }
