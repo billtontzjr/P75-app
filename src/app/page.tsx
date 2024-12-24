@@ -59,9 +59,9 @@ export default function Home() {
           setIsFileLoaded(true);
           setError('');
         },
-        error: (error) => {
+        error: (error: Papa.ParseError) => {
           console.error('Error:', error);
-          setError(error.message);
+          setError(error.message || 'Error parsing CSV file');
         }
       });
     };
