@@ -32,22 +32,41 @@ export default function Home() {
         Papa.parse(text, {
           header: true,
           skipEmptyLines: true,
-          transformHeader: (header) => header.trim(),
           complete: (results) => {
-            console.log('Raw CSV text:', text);
-            console.log('Parsed CSV data:', results.data);
+            console.log('Raw CSV text:', text.substring(0, 200)); // Show first 200 chars
             console.log('Column names:', results.meta.fields);
+            
+            if (!results.data || results.data.length === 0) {
+              setError('No data found in CSV');
+              return;
+            }
 
-            // Transform the data to ensure proper structure
+            // Log the first row to see its structure
+            console.log('First row:', results.data[0]);
+
+            // Transform the data
             const transformedData = results.data
-              .filter((row: any) => row && typeof row === 'object')
-              .map((row: any) => ({
-                Code: row['Code']?.toString().trim(),
-                P75: row[' P75']?.toString().trim() // Note the space before P75
-              }))
+              .map((row: any) => {
+                // Handle both possible column names
+                const code = row['Code'] || row.Code;
+                const p75 = row[' P75'] || row.P75 || row['P75'];
+                
+                console.log('Processing row:', { code, p75, original: row });
+                
+                return {
+                  Code: code?.toString().trim(),
+                  P75: p75?.toString().trim()
+                };
+              })
               .filter(row => row.Code && row.P75);
 
-            console.log('Transformed data:', transformedData.slice(0, 5));
+            console.log('First 5 transformed rows:', transformedData.slice(0, 5));
+            
+            if (transformedData.length === 0) {
+              setError('No valid data found after processing');
+              return;
+            }
+
             setData(transformedData);
             setIsFileLoaded(true);
             setError('');
@@ -58,7 +77,8 @@ export default function Home() {
           }
         });
       } catch (error: any) {
-        setError('Error reading file: ' + error.message);
+        console.error('File processing error:', error);
+        setError('Error processing file: ' + error.message);
       }
     };
 
@@ -70,6 +90,9 @@ export default function Home() {
   };
 
   const handleSearch = (searchValue: string) => {
+    console.log('Searching for:', searchValue);
+    console.log('Available data:', data.slice(0, 5));
+    
     setSearchTerm(searchValue);
     setSelectedCode('');
     setSelectedP75('');
@@ -80,8 +103,12 @@ export default function Home() {
     }
 
     const filtered = data
-      .filter(row => row.Code.toLowerCase().includes(searchValue.toLowerCase()))
-      .slice(0, 10);  // Limit to 10 results for better performance
+      .filter(row => {
+        const match = row.Code.toLowerCase().includes(searchValue.toLowerCase());
+        console.log(`Checking ${row.Code} (${row.P75}): ${match}`);
+        return match;
+      })
+      .slice(0, 10);
 
     console.log('Filtered results:', filtered);
     setFilteredResults(filtered);
