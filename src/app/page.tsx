@@ -14,7 +14,7 @@ export default function Home() {
   const [data, setData] = useState<CSVRow[]>([])
   const [filteredResults, setFilteredResults] = useState<CSVRow[]>([])
   const [fileName, setFileName] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string>('')
   const [isFileLoaded, setIsFileLoaded] = useState(false)
   const [selectedCode, setSelectedCode] = useState<string>('');
   const [selectedP75, setSelectedP75] = useState<string>('');
@@ -41,26 +41,28 @@ export default function Home() {
               return;
             }
 
-            // Log the first row to see its structure
-            console.log('First row:', results.data[0]);
+            // Log the first few rows to see their structure
+            console.log('First few rows:', results.data.slice(0, 3));
 
-            // Transform the data
             const transformedData = results.data
               .map((row: any) => {
-                // Handle both possible column names
-                const code = row['Code'] || row.Code;
-                const p75 = row[' P75'] || row.P75 || row['P75'];
+                // Explicitly look for the exact column names we see in the console
+                const code = row['Code'];
+                const p75 = row[' P75']; // Note the space before P75
                 
-                console.log('Processing row:', { code, p75, original: row });
+                if (!code || !p75) {
+                  console.log('Skipping row due to missing data:', row);
+                  return null;
+                }
                 
                 return {
-                  Code: code?.toString().trim(),
-                  P75: p75?.toString().trim()
+                  Code: code.toString().trim(),
+                  P75: p75.toString().trim()
                 };
               })
-              .filter(row => row.Code && row.P75);
+              .filter((row): row is CSVRow => row !== null);
 
-            console.log('First 5 transformed rows:', transformedData.slice(0, 5));
+            console.log('Transformed data (first 5 rows):', transformedData.slice(0, 5));
             
             if (transformedData.length === 0) {
               setError('No valid data found after processing');
@@ -91,7 +93,7 @@ export default function Home() {
 
   const handleSearch = (searchValue: string) => {
     console.log('Searching for:', searchValue);
-    console.log('Available data:', data.slice(0, 5));
+    console.log('Current data sample:', data.slice(0, 5));
     
     setSearchTerm(searchValue);
     setSelectedCode('');
@@ -105,7 +107,7 @@ export default function Home() {
     const filtered = data
       .filter(row => {
         const match = row.Code.toLowerCase().includes(searchValue.toLowerCase());
-        console.log(`Checking ${row.Code} (${row.P75}): ${match}`);
+        console.log(`Checking ${row.Code} -> P75: ${row.P75} (match: ${match})`);
         return match;
       })
       .slice(0, 10);
@@ -115,7 +117,7 @@ export default function Home() {
   };
 
   const handleCodeSelect = (code: string, p75: string) => {
-    console.log('Selected:', { code, p75 });
+    console.log('Selected code:', code, 'with P75:', p75);
     setSelectedCode(code);
     setSelectedP75(p75);
     setSearchTerm(code);
@@ -147,7 +149,7 @@ export default function Home() {
               type="text"
               placeholder="Enter Code..."
               value={searchTerm}
-              onChange={handleSearch}
+              onChange={(e) => handleSearch(e.target.value)}
               className="w-full p-2 border rounded-md"
             />
           </div>
@@ -172,7 +174,7 @@ export default function Home() {
 
               {/* Results Section */}
               <div className="space-y-4">
-                {selectedCode && (
+                {selectedCode && selectedP75 && (
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -198,7 +200,7 @@ export default function Home() {
                         className="w-full text-left p-3 bg-gray-800/30 hover:bg-gray-700/30 rounded-lg text-gray-200 transition-colors duration-200"
                       >
                         <span className="font-medium">{item.Code}</span>
-                        <span className="text-gray-400 ml-4">Click to view P75 value</span>
+                        <span className="text-gray-400 ml-4">P75: {item.P75}</span>
                       </motion.button>
                     ))}
                   </div>
