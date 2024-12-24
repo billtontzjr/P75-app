@@ -7,7 +7,8 @@ import Papa from 'papaparse'
 
 interface CSVRow {
   Code: string;
-  [key: string]: string;  // For P75 and any other columns
+  P75: string;
+  [key: string]: string;  // For other columns
 }
 
 export default function Home() {
@@ -17,6 +18,8 @@ export default function Home() {
   const [fileName, setFileName] = useState('')
   const [error, setError] = useState('')
   const [isFileLoaded, setIsFileLoaded] = useState(false)
+  const [selectedCode, setSelectedCode] = useState<string>('');
+  const [selectedP75, setSelectedP75] = useState<string>('');
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -38,25 +41,60 @@ export default function Home() {
           Papa.parse<CSVRow>(e.target.result, {
             header: true,
             skipEmptyLines: true,
+            transformHeader: (header: string) => {
+              // Remove any BOM characters, trim whitespace, and normalize column names
+              const cleaned = header.replace(/^\ufeff/, '').trim();
+              console.log('Raw header:', header, '-> cleaned:', cleaned);
+              return cleaned;
+            },
             complete: (results) => {
-              if (results.data && results.data.length > 0) {
-                // Validate CSV structure
-                const firstRow = results.data[0] as CSVRow
-                if (!('Code' in firstRow) || !Object.keys(firstRow).some(key => key.includes('P75'))) {
-                  setError('CSV must contain "Code" and "P75" columns')
-                  return
+              if (!results.data || results.data.length === 0) {
+                setError('No data found in CSV file');
+                return;
+              }
+
+              try {
+                // Get column names from the first row
+                const firstRow = results.data[0] as CSVRow;
+                const columns = Object.keys(firstRow);
+                console.log('Available columns:', columns);
+
+                // Find exact matches for our columns (with trimmed spaces)
+                const codeColumn = columns.find(col => col.trim() === 'Code');
+                const p75Column = columns.find(col => col.trim() === 'P75');
+
+                if (!codeColumn || !p75Column) {
+                  setError(`CSV must have "Code" and "P75" columns. Found: ${columns.join(', ')}`);
+                  return;
                 }
-                setData(results.data as CSVRow[])
-                setIsFileLoaded(true)
-                setError('')
-              } else {
-                setError('No data found in CSV file')
+
+                console.log('Found columns:', { codeColumn, p75Column });
+
+                // Transform the data
+                const transformedData = results.data
+                  .filter((row: any) => row && typeof row === 'object')
+                  .map((row: any) => {
+                    const code = row[codeColumn]?.toString().trim();
+                    let p75 = row[p75Column]?.toString().trim();
+                    console.log('Processing row:', { code, p75 });
+                    return { Code: code, P75: p75 };
+                  })
+                  .filter(row => row.Code && row.P75); // Remove empty rows
+
+                console.log('Sample of processed data:', transformedData.slice(0, 3));
+                setData(transformedData);
+                setIsFileLoaded(true);
+                setError('');
+              } catch (error) {
+                console.error('Error processing CSV:', error);
+                setError('Error processing CSV: ' + (error as Error).message);
               }
             },
             error: (error: Papa.ParseError) => {
-              setError('Error parsing CSV file: ' + error.message)
+              console.error('CSV parsing error:', error);
+              setError('Error parsing CSV: ' + error.message);
             }
-          })
+          });
         } catch (error: any) {
           setError('Error reading file: ' + error.message)
         }
@@ -71,21 +109,37 @@ export default function Home() {
   }
 
   const handleSearch = (searchValue: string) => {
-    setSearchTerm(searchValue)
-    if (searchValue) {
-      const results = data.filter((item: CSVRow) => 
-        item.Code?.toLowerCase().includes(searchValue.toLowerCase())
-      )
-      setFilteredResults(results.slice(0, 10))
-    } else {
-      setFilteredResults([])
+    setSearchTerm(searchValue);
+    setSelectedCode('');
+    setSelectedP75('');
+    
+    if (!searchValue.trim()) {
+      setFilteredResults([]);
+      return;
     }
-  }
 
-  const formatP75 = (item: CSVRow) => {
-    const p75Key = Object.keys(item).find(key => key.includes('P75'))
-    return p75Key ? item[p75Key].trim() : 'N/A'
-  }
+    try {
+      const results = data
+        .filter(item => {
+          const code = item.Code?.toString().toLowerCase();
+          const search = searchValue.toLowerCase();
+          return code && code.includes(search);
+        })
+        .slice(0, 10);
+
+      setFilteredResults(results);
+    } catch (error) {
+      console.error('Search error:', error);
+      setFilteredResults([]);
+    }
+  };
+
+  const handleCodeSelect = (code: string, p75: string) => {
+    setSelectedCode(code);
+    setSelectedP75(p75);
+    setSearchTerm(code);
+    setFilteredResults([]);
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -156,7 +210,7 @@ export default function Home() {
                 <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search by code..."
+                  placeholder="Enter code to search..."
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-100 placeholder-gray-400"
@@ -165,29 +219,40 @@ export default function Home() {
 
               {/* Results Section */}
               <div className="space-y-4">
-                {filteredResults.length > 0 ? (
+                {selectedCode ? (
                   <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="grid grid-cols-2 gap-4"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gray-800/30 p-6 rounded-lg"
                   >
-                    <div className="text-sm font-medium text-gray-400">Code</div>
-                    <div className="text-sm font-medium text-gray-400">P75 Value</div>
-                    {filteredResults.map((item: CSVRow, index) => (
-                      <motion.div 
+                    <div className="text-center">
+                      <h3 className="text-xl font-semibold text-gray-200 mb-2">P75 Value for Code {selectedCode}</h3>
+                      <p className="text-2xl font-bold text-blue-400">
+                        {selectedP75 || 'N/A'}
+                      </p>
+                    </div>
+                  </motion.div>
+                ) : filteredResults.length > 0 ? (
+                  <div className="space-y-2">
+                    {filteredResults.map((item, index) => (
+                      <motion.button
                         key={index}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        className="contents"
+                        onClick={() => {
+                          console.log('Selected item:', item);
+                          handleCodeSelect(item.Code, item.P75);
+                        }}
+                        className="w-full text-left p-3 bg-gray-800/30 hover:bg-gray-700/30 rounded-lg text-gray-200 transition-colors duration-200"
                       >
-                        <div className="bg-gray-800/30 p-3 rounded-lg text-gray-200">{item.Code}</div>
-                        <div className="bg-gray-800/30 p-3 rounded-lg text-gray-200">{formatP75(item)}</div>
-                      </motion.div>
+                        <span className="font-medium">{item.Code}</span>
+                        <span className="text-gray-400 ml-4">Click to view P75 value</span>
+                      </motion.button>
                     ))}
-                  </motion.div>
+                  </div>
                 ) : searchTerm ? (
-                  <div className="text-center text-gray-400">No results found</div>
+                  <div className="text-center text-gray-400">No matching codes found</div>
                 ) : (
                   <div className="text-center text-gray-400">Enter a code to search</div>
                 )}
@@ -197,5 +262,5 @@ export default function Home() {
         </div>
       </motion.div>
     </div>
-  )
+  );
 }
