@@ -53,7 +53,7 @@ export default function Home() {
                 P75: p75Value.toString().trim()
               };
             })
-            .filter((row): row is CSVRow => row !== null);
+            .filter((row): row is CSVRow => row !== null && row.Code !== undefined && row.P75 !== undefined);
 
           console.log('Transformed data:', transformedData);
           setData(transformedData);
