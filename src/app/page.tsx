@@ -33,26 +33,29 @@ export default function Home() {
         header: true,
         skipEmptyLines: true,
         complete: (results: Papa.ParseResult<CSVRow>) => {
-          console.log('Raw data sample:', results.data[0]);
           console.log('Column names:', results.meta.fields);
+          console.log('First row sample:', results.data[0]);
           
           const transformedData = results.data
             .map((row: CSVRow) => {
-              const code = row['Code']?.toString();
-              const p75 = row[' P75']?.toString();
+              console.log('Processing row:', row);
               
-              if (!code || !p75) {
+              const p75Value = row[' P75'] || row['P75'] || row[' p75'] || row['p75'];
+              const code = row['Code'] || row['code'];
+              
+              if (!code || !p75Value) {
                 console.log('Skipping invalid row:', row);
                 return null;
               }
               
               return {
-                Code: code.trim(),
-                ' P75': p75.trim()
+                Code: code.toString().trim(),
+                ' P75': p75Value.toString().trim()
               };
             })
             .filter((row): row is CSVRow => row !== null);
 
+          console.log('Transformed data:', transformedData);
           setData(transformedData);
           setIsFileLoaded(true);
           setError('');
