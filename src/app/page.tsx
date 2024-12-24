@@ -5,7 +5,7 @@ import Papa from 'papaparse';
 
 interface CSVRow {
   Code: string;
-  P75: string;
+  ' P75': string;  // Note the space before P75 to match the CSV column name
 }
 
 interface SelectedItem {
@@ -32,13 +32,13 @@ export default function Home() {
       Papa.parse<CSVRow>(text, {
         header: true,
         skipEmptyLines: true,
-        complete: (results) => {
+        complete: (results: Papa.ParseResult<CSVRow>) => {
           console.log('Raw data sample:', results.data[0]);
           console.log('Column names:', results.meta.fields);
           
           // Transform the data, handling the space in ' P75' column name
           const transformedData = results.data
-            .map((row: any) => {
+            .map((row: CSVRow) => {
               const code = row['Code']?.toString();
               const p75 = row[' P75']?.toString(); // Note the space before P75
               
@@ -49,7 +49,7 @@ export default function Home() {
               
               return {
                 Code: code.trim(),
-                P75: p75.trim()
+                ' P75': p75.trim()
               };
             })
             .filter((row): row is CSVRow => row !== null);
@@ -78,7 +78,7 @@ export default function Home() {
         if (match) {
           // Check if code already exists
           if (!selectedItems.some(item => item.code === code)) {
-            setSelectedItems(prev => [...prev, { code: match.Code, p75: match.P75 }]);
+            setSelectedItems(prev => [...prev, { code: match.Code, p75: match[' P75'] }]);
           }
         } else {
           console.log('No match found for code:', code);
