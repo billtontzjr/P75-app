@@ -27,9 +27,9 @@ export default function Home() {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result;
-      if (typeof text !== 'string') return;
+      if (!text || typeof text !== 'string') return;
 
-      Papa.parse(text, {
+      Papa.parse<CSVRow>(text, {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
