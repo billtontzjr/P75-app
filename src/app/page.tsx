@@ -5,10 +5,7 @@ import Papa from 'papaparse';
 
 interface CSVRow {
   Code?: string;
-  ' P75'?: string;
   P75?: string;
-  ' p75'?: string;
-  p75?: string;
 }
 
 interface SelectedItem {
@@ -43,8 +40,8 @@ export default function Home() {
             .map((row: CSVRow) => {
               console.log('Processing row:', row);
               
-              const p75Value = row[' P75'] || row['P75'] || row[' p75'] || row['p75'];
-              const code = row['Code'] || row['code'];
+              const p75Value = row['P75'];
+              const code = row['Code'];
               
               if (!code || !p75Value) {
                 console.log('Skipping invalid row:', row);
@@ -53,7 +50,7 @@ export default function Home() {
               
               return {
                 Code: code.toString().trim(),
-                ' P75': p75Value.toString().trim()
+                P75: p75Value.toString().trim()
               };
             })
             .filter((row): row is CSVRow => row !== null);
@@ -87,7 +84,7 @@ export default function Home() {
           if (!selectedItems.some(item => item.code.toUpperCase() === code)) {
             setSelectedItems(prev => [...prev, { 
               code: match.Code?.trim() || '', 
-              p75: match[' P75']?.trim() || '' 
+              p75: match['P75']?.trim() || '' 
             }]);
           }
         } else {
